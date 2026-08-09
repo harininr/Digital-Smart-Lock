@@ -43,6 +43,10 @@ volatile uint16_t otp_timer = 0;     // countdown for OTP validity
 volatile uint8_t otp_timer_active = 0; // flag if OTP timer running
 volatile uint8_t otp_entry_done = 0; // becomes 1 after last digit entered
 // Ultrasonic sensor functions
+/**
+ * @brief Triggers the HC-SR04 ultrasonic sensor and calculates distance
+ * @return Measured distance in centimeters
+ */
 uint32_t Measure_Distance(void);
 uint8_t bt_connected = 0;  // 0 = not connected, 1 = connected
 
@@ -57,21 +61,61 @@ void USART1_SendChar(char c);
 void USART1_SendString(const char *s);
 char USART1_ReceiveCharBlocking(void);
 
+/**
+ * @brief Processes incoming string commands over Bluetooth (USART1)
+ * @param buf Null-terminated string received via Bluetooth
+ * Triggers OTP generation if 'GET OTP' is received.
+ */
 void process_line(char *buf);
+/**
+ * @brief Generates a pseudo-random 4-digit OTP
+ * @return A 16-bit unsigned integer representing the 4-digit OTP (e.g., 1000 - 9999)
+ */
 uint16_t generate_otp(void);
+/**
+ * @brief Generates an OTP, starts the validity timer, and transmits it via Bluetooth
+ * @return The generated OTP
+ */
 uint16_t send_otp(void);
+/**
+ * @brief Displays the 'Enter OTP:' prompt on the LCD screen
+ */
 void LCD_EnterOTP(void);
+/**
+ * @brief Scans the 4x4 matrix keypad to detect a pressed key
+ * @return The character of the pressed key, or 0 if no key is pressed
+ */
 char Keypad_GetKey(void);
+/**
+ * @brief Reads a 4-digit OTP from the keypad and displays it on the LCD
+ * @param otp_buffer Array to store the 4 entered characters plus null terminator
+ */
 void Keypad_ReadOTP(char *otp_buffer);
+/**
+ * @brief Initializes the GPIO pins for the status LEDs (Green/Red)
+ */
 void LED_Init(void);
+/**
+ * @brief Validates the entered OTP against the active OTP
+ * @param otp The active generated OTP
+ * @param entered The string of characters entered by the user
+ * Unlocks the system if correct, or increments the wrong attempt counter.
+ * Triggers a temporary lockout after 3 consecutive wrong attempts.
+ */
 void OTP_Check(uint16_t otp, char *entered);
 
 // LCD/I2C functions
+/**
+ * @brief Initializes I2C1 peripheral for LCD communication
+ */
 void I2C1_LCD_Init(void);
 void I2C1_LCD_Write(uint8_t data);
 void LCD_SendNibble(uint8_t nibble, uint8_t mode);
 void LCD_SendCommand(uint8_t cmd);
 void LCD_SendData(uint8_t data);
+/**
+ * @brief Initializes the 16x2 I2C LCD with standard 4-bit mode configuration
+ */
 void LCD_Init(void);
 void LCD_Clear(void);
 void LCD_SetCursor(uint8_t row, uint8_t col);
@@ -79,8 +123,15 @@ void LCD_String(char *str);
 void Keypad_GPIO_Init(void);
 
 void Buzzer_Init(void);
+/**
+ * @brief Initializes Timer 2 (TIM2) to generate 1-second interrupts
+ * Used for tracking OTP expiry and lockout countdowns.
+ */
 void TIM2_Init(void);
 
+/**
+ * @brief Initializes ADC1 for analog sensor reading (e.g., LDR or Potentiometer)
+ */
 void ADC1_Init(void);
 uint16_t ADC1_Read(void);
 
@@ -89,6 +140,11 @@ void LCD_PrintLine(uint8_t row, const char *str);
 
 
 
+/**
+ * @brief Main execution function for the Smart Lock
+ * Initializes peripherals, sets up I2C, LCD, UART, and enters the main event loop
+ * to process Bluetooth commands and check connection status.
+ */
 int main(void)
 {
     char rxbuf[BUF_SIZE];
@@ -505,6 +561,10 @@ void TIM2_Init(void)
 }
 
 
+/**
+ * @brief Interrupt Handler for Timer 2
+ * Manages the lockout countdown and OTP expiry timer.
+ */
 void TIM2_IRQHandler(void)
 {
     if (TIM2->SR & TIM_SR_UIF)
